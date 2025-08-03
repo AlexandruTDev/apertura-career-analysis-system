@@ -3,22 +3,17 @@
 import json
 from wyscout_loader import WyscoutDataLoader
 from profile_builder import ClubProfileBuilder
-# We are no longer importing the API enricher for now
-# from enrich_with_api import enrich_player_data 
 
 # --- Configuration ---
 DATA_FOLDER = "./data"
+# Define a path for our final output file
+OUTPUT_FILE = "./data/processed/club_profiles_final.json" 
 
 # --- Main Pipeline ---
 if __name__ == "__main__":
-    # --- The API Enrichment step is now 'muted' ---
-    # print("--- Stage 1: Running API Enrichment (Currently Muted) ---")
-    # enrich_player_data() # We are not running this for the PoC
+    print("\n--- Running Main Data Pipeline ---")
     
-    # --- We proceed directly to building profiles from the available data ---
-    print("\n--- Stage 2: Loading Base Data and Building Club Profiles ---")
-    
-    # Step 1: Load the data
+    # Step 1: Load the data from the correct subfolders
     loader = WyscoutDataLoader(data_folder_path=DATA_FOLDER)
     load_success = loader.load_romanian_superliga_data()
 
@@ -27,7 +22,17 @@ if __name__ == "__main__":
         builder = ClubProfileBuilder(loader=loader)
         profiles = builder.build_all_profiles()
 
-        # Step 3: Print a sample of the output to verify
+        # Step 3: Save the complete output to a file
         if profiles:
+            print(f"\n✅ Successfully generated {len(profiles)} club profiles.")
+            
+            # Use a 'with' statement to safely open and write to the file
+            with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
+                # json.dump (no 's') writes directly to a file object
+                json.dump(profiles, f, indent=2, ensure_ascii=False)
+                
+            print(f"Final JSON output saved to: {OUTPUT_FILE}")
+            
+            # We can still print a sample if we want
             print("\n--- Sample of first club profile ---")
             print(json.dumps(profiles[0], indent=2, ensure_ascii=False))

@@ -1,4 +1,4 @@
-# wyscout_loader.py (Refactored for CSV and Pandas)
+# wyscout_loader.py (Updated for Raw/Processed Pipeline)
 
 import pandas as pd
 import os
@@ -24,11 +24,10 @@ class WyscoutDataLoader:
         """
         Loads the specific CSV summary files for the Romanian Superliga.
         """
-        # --- File Mapping ---
-        # Here we map our internal names to the exact filenames. No need to rename the files.
+        # --- File Mapping (Updated with correct subfolder paths) ---
         files_to_load = {
-            "teams": "Superliga_Teams_24_25_adv_stats.csv",
-            "players": "Romania_Superliga_Players_24_25_adv_stats.csv"
+            "teams": "raw/Superliga_Teams_24_25_adv_stats.csv",
+            "players": "processed/players_manually_enriched.csv" # <-- This is the main change
         }
 
         try:
@@ -43,12 +42,11 @@ class WyscoutDataLoader:
             print("✅ Romanian Superliga summary data loaded successfully into pandas DataFrames.")
             return True
         except FileNotFoundError as e:
-            print(f"❌ ERROR: A data file was not found. Please check filenames in the 'data' folder. Details: {e}")
+            print(f"❌ ERROR: A data file was not found. Please check your file paths and names. Details: {e}")
             return False
 
-# --- Example of how to test the refactored class ---
+# --- The test block below should also be updated if you want to run it directly ---
 if __name__ == "__main__":
-    # This assumes your CSVs are in a folder named 'data' inside your project
     DATA_FOLDER = "./data" 
     
     loader = WyscoutDataLoader(data_folder_path=DATA_FOLDER)
@@ -62,5 +60,5 @@ if __name__ == "__main__":
         print("\n--- First 3 Teams ---")
         print(loader.teams_df.head(3))
         
-        print("\n--- First 3 Players (selected columns) ---")
+        print("\n--- First 3 Players (from enriched file) ---")
         print(loader.players_df[['shortName', 'teams.name', 'total.minutesOnField']].head(3))
