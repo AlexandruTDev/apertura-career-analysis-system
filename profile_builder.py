@@ -76,7 +76,7 @@ class ClubProfileBuilder:
         
     def _calculate_squad_disruption(self, team_name: str) -> dict:
         """
-        Calculates a weighted disruption score based on count, production, and minutes lost.
+        Calculates a weighted disruption score, now with separate goal and assist loss tracking.
         """
         mapped_name = self._get_mapped_team_name(team_name)
         all_players_df = self.loader.players_df[self.loader.players_df['teams.name'] == mapped_name]
@@ -85,7 +85,8 @@ class ClubProfileBuilder:
         if departed_players_df.empty:
             return {
                 "squad_disruption_score": 0.0, "departed_player_count": 0,
-                "production_lost_goals_assists": 0, "minutes_lost_percentage": 0.0
+                "production_lost_goals": 0, "production_lost_assists": 0, # <-- Updated
+                "minutes_lost_percentage": 0.0
             }
 
         # --- Calculations ---
@@ -94,18 +95,19 @@ class ClubProfileBuilder:
         minutes_lost_percentage = (minutes_lost / total_squad_minutes) * 100 if total_squad_minutes > 0 else 0
     
         departed_count = len(departed_players_df)
-        production_lost = departed_players_df['total.goals'].sum() + departed_players_df['total.assists'].sum()
+    
+        # We now calculate goals and assists separately.
+        goals_lost = departed_players_df['total.goals'].sum()
+        assists_lost = departed_players_df['total.assists'].sum()
+        total_production_lost = goals_lost + assists_lost
 
         # --- Weighted Score Calculation (0-100 scale) ---
-        # Normalize each component to a 0-100 scale
-        count_score = min((departed_count / 15) * 100, 100) # Assumes >15 departures is max disruption
-        minutes_score = min((minutes_lost_percentage / 50) * 100, 100) # Assumes >50% minutes lost is max
-        production_score = min((production_lost / 40) * 100, 100) # Assumes >40 G+A lost is max
+        count_score = min((departed_count / 15) * 100, 100)
+        minutes_score = min((minutes_lost_percentage / 50) * 100, 100)
+        production_score = min((total_production_lost / 40) * 100, 100) # The score still uses the total
 
-        # Define weights (must sum to 1.0)
         weights = {'minutes': 0.60, 'count': 0.25, 'production': 0.15}
     
-        # Calculate the final weighted score
         final_disruption_score = (
             minutes_score * weights['minutes'] +
             count_score * weights['count'] +
@@ -113,9 +115,10 @@ class ClubProfileBuilder:
         )
     
         return {
-            "squad_disruption_score": round(final_disruption_score / 10, 1), # Scale to 0-10
+            "squad_disruption_score": round(final_disruption_score / 10, 1),
             "departed_player_count": int(departed_count),
-            "production_lost_goals_assists": int(production_lost),
+            "production_lost_goals": int(goals_lost), # <-- Updated
+            "production_lost_assists": int(assists_lost), # <-- Updated
             "minutes_lost_percentage": round(minutes_lost_percentage, 1)
         }
 
