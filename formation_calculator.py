@@ -2,6 +2,12 @@
 
 import pandas as pd
 import os
+import unicodedata
+
+# We need our normalization function here as well
+def normalize_text(text: str) -> str:
+    if not isinstance(text, str): return text
+    return "".join(c for c in unicodedata.normalize('NFD', text) if unicodedata.category(c) != 'Mn')
 
 class FormationCalculator:
     def __init__(self, data_folder_path: str):
@@ -11,8 +17,10 @@ class FormationCalculator:
         """
         Calculates the most frequent formation for a team from their event file.
         """
-        # Normalize the team name to create a likely filename
-        team_name_slug = team_name.replace(" ", "_").replace("ş", "s").replace("ţ", "t").replace("ă", "a")
+        # --- THE FIX IS HERE ---
+        # We now use our robust normalize_text function
+        team_name_normalized = normalize_text(team_name)
+        team_name_slug = team_name_normalized.replace(" ", "_")
         event_file = f"{team_name_slug}_2024_2025_events.csv"
         file_path = os.path.join(self.base_path, 'raw', event_file)
 
@@ -28,7 +36,6 @@ class FormationCalculator:
             if team_events_df.empty or 'team.formation' not in team_events_df.columns:
                 return None
 
-            # Get the most frequent formation (the mode) from the column
             primary_formation = team_events_df['team.formation'].mode()[0]
             print(f"[LOG] Calculated primary formation for {team_name}: {primary_formation}")
             return primary_formation
