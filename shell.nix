@@ -12,5 +12,6 @@ pkgs.mkShell {
     
     # --- New package for the progress bar ---
     pkgs.python311Packages.tqdm
+    pkgs.python311Packages.streamlit
   ];
 }
