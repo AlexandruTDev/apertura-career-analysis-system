@@ -46,8 +46,8 @@ def run_test():
     Runs a test of the MatchFinder with a hardcoded player.
     """
     # --- NEW TEST PLAYER ---
-    first_name = "Mihnea"
-    last_name = "Radulescu"
+    first_name = "Adama"
+    last_name = "Diakhaby"
     
     print(f"--- [TEST] Starting match-finding test for: {first_name} {last_name} ---")
 

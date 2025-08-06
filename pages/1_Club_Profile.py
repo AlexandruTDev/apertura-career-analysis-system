@@ -1,19 +1,23 @@
-# dashboard.py (Final, Polished, and Robust Version)
+# pages/1_Club_Profile.py
 import streamlit as st
-import pandas as pd
 import json
+import pandas as pd
 
-st.set_page_config(layout="wide", page_title="Superliga Club Analysis")
-
+# --- Helper Functions ---
 @st.cache_data
-def load_data(file_path):
-    """Loads the final club profiles JSON file."""
+def load_data(profiles_path, crests_path):
+    """Loads both the club profiles and the club crests data."""
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        return {club['club_name']: club for club in data}
+        with open(profiles_path, 'r', encoding='utf-8') as f:
+            profiles_data = json.load(f)
+        club_profiles = {club['club_name']: club for club in profiles_data}
+        
+        crests_df = pd.read_csv(crests_path)
+        crest_dict = pd.Series(crests_df.crest_url.values,index=crests_df.club_name_official).to_dict()
+        
+        return club_profiles, crest_dict
     except FileNotFoundError:
-        return None
+        return None, None
 
 def create_metric_card(icon_url: str, label: str, value: str):
     """Helper function to generate the HTML for a styled metric card."""
@@ -21,73 +25,81 @@ def create_metric_card(icon_url: str, label: str, value: str):
     <div style="text-align: center; padding: 15px; border-radius: 5px; background-color: #FAFAFA; height: 100%;">
         <img src="{icon_url}" width="50" style="margin-bottom: 10px;">
         <h4 style="color: gray; margin: 0; text-transform: uppercase; font-size: 1em;">{label}</h4>
-        <h2 style="margin: 0;">{value}</h2>
+        <div style="margin-top: 5px;">{value}</div>
     </div>
     """, unsafe_allow_html=True)
 
-# --- UI Elements ---
-col1_title, col2_title = st.columns([1, 10])
-with col1_title:
-    st.image("https://tmssl.akamaized.net/images/logo/header/ro1.png?lm=1548242838", width=70)
-with col2_title:
-    st.title("Club Intelligence Dashboard - Superliga")
+# This mapping connects our clean system names to the names scraped from the official site.
+OFFICIAL_NAME_MAPPING = {
+    "Dinamo Bucuresti": "Dinamo Bucuresti", "FCS Bucuresti": "Fcsb",
+    "Rapid Bucuresti": "Fc Rapid Bucuresti", "Otelul": "Otelul Galati",
+    "CFR Cluj": "Cfr Cluj", "Botosani": "Fc Botosani",
+    "Unirea Slobozia": "Unirea Slobozia", "Universitatea Craiova": "Universitatea Craiova",
+    "UTA Arad": "Uta Arad", "Hermannstadt": "Afc Hermannstadt",
+    "Universitatea Cluj": "Fc Universitatea Cluj", "Petrolul 52": "Petrolul Ploiesti",
+    "Farul Constanta": "Fc Farul Constanta"
+}
 
-club_profiles_dict = load_data('./data/processed/club_profiles_final.json')
+# --- Main App UI ---
+club_profiles_dict, crest_dict = load_data(
+    profiles_path='./data/processed/club_profiles_final.json',
+    crests_path='./data/processed/club_crests.csv'
+)
 
 if not club_profiles_dict:
-    st.error("❌ ERROR: Club profiles file not found. Please run main.py to generate it.")
+    st.error("❌ ERROR: Club profiles file not found. Please run main.py and crest_scraper.py to generate it.")
 else:
     club_names = sorted(list(club_profiles_dict.keys()))
-    selected_club_name = st.selectbox("Select a Club to Analyze:", club_names)
     
-    selected_club_data = club_profiles_dict[selected_club_name]
+    # --- Session State Logic for Navigation ---
+    default_index = 0
+    if 'selected_club' in st.session_state and st.session_state['selected_club'] in club_names:
+        default_index = club_names.index(st.session_state['selected_club'])
+        del st.session_state['selected_club']
     
-    st.markdown("---")
+    selected_club_name = st.selectbox("Select a Club to Analyze:", club_names, index=default_index)
     
-    st.header(f"Tactical Identity: {selected_club_name}")
-    
-    tactical_data = selected_club_data.get('poc_metrics', {}).get('tactical_analysis', {})
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    # --- Card 1: Formation (with dynamic secondary formation) ---
-    with col1:
-        primary = tactical_data.get('primary_formation', 'N/A')
-        secondary = tactical_data.get('secondary_formation')
+    if selected_club_name:
+        selected_club_data = club_profiles_dict[selected_club_name]
         
-        value_html = f"{primary}"
-        if secondary:
-            value_html += f" <span style='font-size: 0.6em; color: gray;'>/ {secondary}</span>"
+        # --- Dynamic Title with Club Crest ---
+        official_name = OFFICIAL_NAME_MAPPING.get(selected_club_name)
+        crest_url = crest_dict.get(official_name)
         
-        create_metric_card(
-            icon_url="https://cdn-icons-png.flaticon.com/512/2173/2173508.png",
-            label="Formations",
-            value=value_html
-        )
+        if crest_url:
+            st.markdown(f"""
+            <div style="display: flex; align-items: center;">
+                <img src="{crest_url}" width="60" style="margin-right: 15px;">
+                <h1 style="margin: 0;">{selected_club_name} - Club Profile</h1>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.title(f"{selected_club_name} - Club Profile")
 
-    # --- Card 2: Possession ---
-    with col2:
-        create_metric_card(
-            icon_url="https://cdn-icons-png.flaticon.com/512/2718/2718459.png",
-            label="Avg. Possession",
-            value=f"{tactical_data.get('avg_possession_percentage', 0)}%"
-        )
-
-    # --- Card 3: Pressing ---
-    with col3:
-        create_metric_card(
-            icon_url="https://cdn-icons-png.flaticon.com/512/8831/8831516.png",
-            label="Pressing (PPDA)",
-            value=f"{tactical_data.get('ppda', 0):.1f}"
-        )
+        st.markdown("---")
+        st.header("Tactical Identity")
         
-    # --- Card 4: Pass Length ---
-    with col4:
-        create_metric_card(
-            icon_url="https://cdn-icons-png.flaticon.com/512/10062/10062255.png",
-            label="Avg. Pass Length",
-            value=f"{tactical_data.get('avg_pass_length', 0):.1f}m"
-        )
-
-    with st.expander("Show Raw JSON Data"):
-        st.json(selected_club_data)
+        tactical_data = selected_club_data.get('poc_metrics', {}).get('tactical_analysis', {})
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            primary = tactical_data.get('primary_formation', 'N/A')
+            secondary = tactical_data.get('secondary_formation')
+            value_html = f'<p style="font-size: 1.2em; font-weight: bold; margin: 0;">{primary}</p>'
+            if secondary:
+                value_html += f'<p style="font-size: 0.9em; color: gray; margin-top: 5px;">Secondary: {secondary}</p>'
+            create_metric_card("https://cdn-icons-png.flaticon.com/512/2173/2173508.png", "Formations", value_html)
+        
+        with col2:
+            value = f"{tactical_data.get('avg_possession_percentage', 0)}%"
+            create_metric_card("https://cdn-icons-png.flaticon.com/512/2718/2718459.png", "Avg. Possession", f"<h2 style='margin: 0;'>{value}</h2>")
+        with col3:
+            value = f"{tactical_data.get('ppda', 0):.1f}"
+            create_metric_card("https://cdn-icons-png.flaticon.com/512/8831/8831516.png", "Pressing (PPDA)", f"<h2 style='margin: 0;'>{value}</h2>")
+        with col4:
+            value = f"{tactical_data.get('avg_pass_length', 0):.1f}m"
+            create_metric_card("https://cdn-icons-png.flaticon.com/512/10062/10062255.png", "Avg. Pass Length", f"<h2 style='margin: 0;'>{value}</h2>")
+        
+        with st.expander("Show Raw JSON Data"):
+            st.json(selected_club_data)
