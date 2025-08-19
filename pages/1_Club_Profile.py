@@ -2,6 +2,8 @@
 import streamlit as st
 import json
 import pandas as pd
+import base64
+from weasyprint import HTML
 
 # --- Helper Functions ---
 @st.cache_data
@@ -144,6 +146,48 @@ OFFICIAL_NAME_MAPPING = {
 }
 
 # --- Main App UI ---
+
+st.title("Club Profile Analysis")
+st.markdown("""
+    <style>
+        .stButton>button {
+            display: block;
+            margin: 0 auto;
+        }
+        
+        /* Main download button (blue) */
+        div.stDownloadButton > button {
+            background-color: #007bff;
+            color: white;
+        }
+        div.stDownloadButton > button:hover {
+            background-color: #0056b3;
+            color: white; 
+        }
+        /* Close button (light red) */
+        div[data-testid="stButton"] > button.st-emotion-cache-19n9s73 {
+            background-color: #ffebee;
+            color: #d32f2f;
+        }
+        div[data-testid="stButton"] > button.st-emotion-cache-19n9s73:hover {
+            background-color: #ffcdd2;
+            border-color: #d32f2f;
+        }
+
+        * Action button style (grey-blue) for View/Share */
+        .action-button-container .stButton > button {
+            background-color: #f0f2f6;
+            color: #31333F;
+            border: 1px solid #dde1e7;
+        }
+        .action-button-container .stButton > button:hover {
+            background-color: #e6e8eb;
+            border: 1px solid #31333F;
+            color: #31333F;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
 club_profiles_dict, crest_dict = load_data(
     profiles_path='./data/processed/club_profiles_final.json',
     crests_path='./data/processed/club_crests.csv'
@@ -207,7 +251,7 @@ else:
         with st.expander("Show Raw JSON Data"):
             st.json(selected_club_data)
 
-        # --- NEW REPORTING SECTION ---
+        # --- REPORTING SECTION ---
         st.markdown("---")
         if st.button("Share Club Profile", use_container_width=True, type="primary"):
             crest_url = crest_dict.get(official_name, "https://i.imgur.com/8f2E3s3.png")
@@ -216,11 +260,35 @@ else:
             report_html = generate_club_report_html(selected_club_data, crest_url)
             st.session_state.club_report_to_show = report_html
             st.rerun()
-            
+
+    else:
+        st.warning("Could not find data for the selected club.")
+
+# --- MODAL DISPLAY LOGIC ---
 if 'club_report_to_show' in st.session_state:
     st.header("Club Profile Report")
     st.components.v1.html(st.session_state.club_report_to_show, height=400, scrolling=True)
-    if st.button("Close Report"):
-        del st.session_state.club_report_to_show
-        st.rerun()
+
+    # --- Use a single centered column for both buttons ---
+    _ , col_center, _ = st.columns([1, 2, 1]) # Use columns to center the container
+    with col_center:
+        # Convert the HTML report to a PDF in memory
+        pdf_bytes = HTML(string=st.session_state.club_report_to_show).write_pdf()
+
+        # Create a download button for the PDF
+        st.download_button(
+            label="📄 Download as PDF",
+            data=pdf_bytes,
+            file_name=f"club_report_{st.session_state.get('selected_club_name_report', 'club').replace(' ', '_')}.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
+
+        if st.button("Close Report", use_container_width=True, type="secondary"):
+            del st.session_state.club_report_to_show
+            del st.session_state.selected_club_name_report
+            st.rerun()
+
+else:
+    st.info("Please run the data processing pipeline to generate the required files.")
         

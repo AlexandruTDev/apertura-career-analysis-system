@@ -76,7 +76,6 @@ class MatchFinder:
         player_pos = player_profile['position_name']
         
         all_matches = []
-        print("\n--- [DEBUG] Raw Score Calculation ---") # Log header
     
         for club in self.club_profiles:
             poc_metrics = club.get('poc_metrics', {})
@@ -86,10 +85,6 @@ class MatchFinder:
                 deal_score = attractiveness_index[player_pos]
                 club_formation = poc_metrics.get('tactical_analysis', {}).get('primary_formation')
                 tactical_score = self._get_tactical_fit_score(player_pos, club_formation)
-            
-                # --- THE NEW LOG IS HERE ---
-                print(f"  - Club: {club['club_name']:<25} | Deal Score: {deal_score:<5.1f} | Tactical Score: {tactical_score:<5}")
-
                 final_score = (deal_score * 0.70) + (tactical_score * 0.30)
                 
                 # Generate dynamic reasons

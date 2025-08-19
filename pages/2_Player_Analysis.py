@@ -4,6 +4,8 @@ import pandas as pd
 import json
 from player_analyzer import PlayerAnalyzer, PLAYERS_STATS_FILE, PLAYERS_PHYSICAL_FILE
 from match_finder import MatchFinder
+import base64
+from weasyprint import HTML
 
 # --- Helper Functions ---
 @st.cache_data
@@ -80,6 +82,47 @@ def generate_report_html(player_name, age, pos, top_skills, match_data, crest_ur
 
 # --- Main App ---
 st.title("Player Analysis & Opportunity Finder")
+
+# --- Center all buttons within their columns ---
+st.markdown("""
+    <style>
+        .stButton>button {
+            display: block;
+            margin: 0 auto;
+        }
+        
+        /* Main download button (blue) */
+        div.stDownloadButton > button {
+            background-color: #007bff;
+            color: white;
+        }
+        div.stDownloadButton > button:hover {
+            background-color: #0056b3;
+            color: white; 
+        }
+        /* Close button (light red) */
+        div[data-testid="stButton"] > button.st-emotion-cache-19n9s73 {
+            background-color: #ffebee;
+            color: #d32f2f;
+        }
+        div[data-testid="stButton"] > button.st-emotion-cache-19n9s73:hover {
+            background-color: #ffcdd2;
+            border-color: #d32f2f;
+        }
+
+        * Action button style (grey-blue) for View/Share */
+        .action-button-container .stButton > button {
+            background-color: #f0f2f6;
+            color: #31333F;
+            border: 1px solid #dde1e7;
+        }
+        .action-button-container .stButton > button:hover {
+            background-color: #e6e8eb;
+            border: 1px solid #31333F;
+            color: #31333F;
+        }
+    </style>
+    """, unsafe_allow_html=True)
 
 if 'success_message' in st.session_state:
     st.success(st.session_state.success_message)
@@ -170,7 +213,7 @@ if players_df is not None and crest_dict is not None:
                 cols = st.columns(3)
                 for i, match in top_3_matches.iterrows():
                     with cols[i]:
-                        # --- THIS IS THE FINAL UI LOGIC ---
+                        # ---  UI LOGIC ---
             
                         # 1. Gather all data for the card
                         official_name = OFFICIAL_NAME_MAPPING.get(match['club_name'])
@@ -210,6 +253,8 @@ if players_df is not None and crest_dict is not None:
 
                         # 5. Render the HTML card
                         st.markdown(card_html, unsafe_allow_html=True)
+                        # 5.1 Render the buttons immediately after the card, inside a styled container
+                        st.markdown('<div class="action-button-container">', unsafe_allow_html=True)
 
                         # 6. Place the button AFTER the card
                         col1_btn, col2_btn, col3_btn = st.columns([1, 2, 1])
@@ -220,29 +265,49 @@ if players_df is not None and crest_dict is not None:
                                 st.session_state['selected_club'] = match['club_name']
                                 st.rerun()
                         # 7. Add a share button
-                        if st.button("Share Report", key=f"share_{match['club_name']}"):
-                            official_name = OFFICIAL_NAME_MAPPING.get(match['club_name'])
-                            crest = crest_dict.get(official_name, "https://i.imgur.com/8f2E3s3.png")
+                        col1_share, col2_share, col3_share = st.columns([1, 2, 1])
+                        with col2_share:
+                            if st.button("Share Report", key=f"share_{match['club_name']}"):
+                                official_name = OFFICIAL_NAME_MAPPING.get(match['club_name'])
+                                crest = crest_dict.get(official_name, "https://i.imgur.com/8f2E3s3.png")
             
-                            # Generate the HTML for this specific match
-                            report_html = generate_report_html(
-                                player_name=selected_player_name,
-                                age=age,
-                                pos=pos,
-                                top_skills=top_3_skills,
-                                match_data=match,
-                                crest_url=crest
-                            )
-                            # Store it in the session state to be shown in a modal
-                            st.session_state.report_to_show = report_html
+                                # Generate the HTML for this specific match
+                                report_html = generate_report_html(
+                                    player_name=selected_player_name,
+                                    age=age,
+                                    pos=pos,
+                                    top_skills=top_3_skills,
+                                    match_data=match,
+                                    crest_url=crest
+                                )
+                                # Store it in the session state to be shown in a modal
+                                st.session_state.report_to_show = report_html
+                        st.markdown('</div>', unsafe_allow_html=True)
 
-                    # --- NEW MODAL DISPLAY LOGIC ---
-                # Place this code immediately after the for loop block
+                # --- MODAL DISPLAY LOGIC ---
                 if 'report_to_show' in st.session_state:
+                    st.header("Player-Club Fit Dossier")
+                    # Display the report visually
                     st.components.v1.html(st.session_state.report_to_show, height=600, scrolling=True)
-                    if st.button("Close Report"):
-                        del st.session_state.report_to_show
-                        st.rerun()
+                    
+                    # --- DOWNLOAD LOGIC ---
+                    _ , col_center, _ = st.columns([1, 2, 1]) # Use columns to center the container
+                    with col_center:
+                        # 1. Convert the HTML report to a PDF in memory
+                        pdf_bytes = HTML(string=st.session_state.report_to_show).write_pdf()
+                    
+                        # 2. Create a download button for the PDF
+                        st.download_button(
+                            label="📄 Download as PDF",
+                            data=pdf_bytes,
+                            file_name=f"player_report_{st.session_state.get('show_matches_for_player', 'report').replace(' ', '_')}.pdf",
+                            mime="application/pdf",
+                            use_container_width=True
+                        )
+                        
+                        if st.button("Close Report",use_container_width=True, type="secondary"):
+                            del st.session_state.report_to_show
+                            st.rerun()
 
                 st.markdown("---")
                 st.subheader("Full League Context")
@@ -270,7 +335,7 @@ if players_df is not None and crest_dict is not None:
                         else: color = 'red'
                         return f'color: {color}; font-weight: bold; font-size: 1.5em;'
 
-                    styled_df = display_df.style.applymap(style_score, subset=['Score'])\
+                    styled_df = display_df.style.map(style_score, subset=['Score'])\
                                         .format({'Score': '{:.1f}'})
 
                     st.dataframe(
