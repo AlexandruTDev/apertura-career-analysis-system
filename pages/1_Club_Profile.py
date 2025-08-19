@@ -37,7 +37,8 @@ OFFICIAL_NAME_MAPPING = {
     "Unirea Slobozia": "Unirea Slobozia", "Universitatea Craiova": "Universitatea Craiova",
     "UTA Arad": "Uta Arad", "Hermannstadt": "Afc Hermannstadt",
     "Universitatea Cluj": "Fc Universitatea Cluj", "Petrolul 52": "Petrolul Ploiesti",
-    "Farul Constanta": "Fc Farul Constanta"
+    "Farul Constanta": "Fc Farul Constanta","Csíkszereda Miercurea Ciuc": "Fk Csikszereda",
+    "FC Arges": "Fc Arges","Metaloglobus Bucuresti": "Metaloglobus"
 }
 
 # --- Main App UI ---

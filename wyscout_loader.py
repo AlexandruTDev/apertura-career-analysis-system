@@ -21,7 +21,7 @@ class WyscoutDataLoader:
         Loads all necessary CSV files for the Romanian Superliga analysis.
         """
         files_to_load = {
-            "teams": "raw/Superliga_Teams_24_25_adv_stats.csv",
+            "teams": "raw/Superliga_Teams_24_25_with_promoted.csv",
             "players": "processed/players_manually_enriched.csv",
             "formations": "raw/superliga_formations_24_25.csv",
             "transfer_balance": "processed/superliga_transfer_balances.csv"

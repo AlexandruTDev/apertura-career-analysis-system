@@ -33,7 +33,9 @@ OFFICIAL_NAME_MAPPING = {
     "Unirea Slobozia": "Unirea Slobozia", "Universitatea Craiova": "Universitatea Craiova",
     "UTA Arad": "Uta Arad", "Hermannstadt": "Afc Hermannstadt",
     "Universitatea Cluj": "Fc Universitatea Cluj", "Petrolul 52": "Petrolul Ploiesti",
-    "Farul Constanta": "Fc Farul Constanta"
+    "Farul Constanta": "Fc Farul Constanta","FC Arges": "ACSC FC Arges",
+    "Csikszereda Miercurea Ciuc": "Fk Csikszereda",
+    "Metaloglobus Bucuresti": "FC Metaloglobus Bucharest"
 }
 
 # --- Main App ---
@@ -117,13 +119,15 @@ if players_df is not None and crest_dict is not None:
         if st.session_state.get('show_matches_for_player') == selected_player_name:
             player_profile = analyzer.get_player_analysis(first_name, last_name)
             if player_profile:
-                best_matches = match_finder.find_best_matches(player_profile)
-                
+                #best_matches = match_finder.find_best_matches(player_profile)
+                all_matches_df = pd.DataFrame(match_finder.find_best_matches(player_profile))
+
                 st.markdown("---")
                 st.header(f"Top 3 Club Matches for {selected_player_name}")
                 
+                top_3_matches = all_matches_df.head(3)
                 cols = st.columns(3)
-                for i, match in enumerate(best_matches):
+                for i, match in top_3_matches.iterrows():
                     with cols[i]:
                         # --- THIS IS THE FINAL UI LOGIC ---
             
@@ -174,6 +178,33 @@ if players_df is not None and crest_dict is not None:
                                 st.session_state['success_message'] = f"'{match['club_name']}' selected! Navigate to 'Club Profile' from the sidebar."
                                 st.session_state['selected_club'] = match['club_name']
                                 st.rerun()
+
+                # --- NEW SECTION: FULL LEAGUE CONTEXT TABLE ---
+                st.markdown("---")
+                st.subheader("Full League Context")
+                
+                remaining_teams_df = all_matches_df.iloc[3:]
+                
+                # Prepare a clean DataFrame for display
+                display_df = remaining_teams_df[['club_name', 'match_score']].copy()
+                display_df.rename(columns={
+                     'club_name': 'Club Name',
+                     'match_score': 'Overall Score'
+                }, inplace=True)
+
+                st.dataframe(
+                    display_df,
+                    hide_index=True,
+                    use_container_width=True,
+                    column_config={
+                        "Overall Score": st.column_config.ProgressColumn(
+                            "Overall Score",
+                            format="%f",
+                            min_value=0,
+                            max_value=100,
+                        ),
+                    }
+                )
             else:
                 st.error("Could not generate a profile for the selected player.")
 else:
