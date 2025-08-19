@@ -38,6 +38,18 @@ OFFICIAL_NAME_MAPPING = {
     "Metaloglobus Bucuresti": "FC Metaloglobus Bucharest"
 }
 
+def color_score(val):
+    """
+    Applies color to the score based on its value.
+    """
+    if val >= 70:
+        color = 'green'
+    elif val >= 50:
+        color = 'orange'
+    else:
+        color = 'red'
+    return f'color: {color}; font-weight: bold; font-size: 1.1em;'
+
 # --- Main App ---
 st.title("Player Analysis & Opportunity Finder")
 
@@ -120,7 +132,8 @@ if players_df is not None and crest_dict is not None:
             player_profile = analyzer.get_player_analysis(first_name, last_name)
             if player_profile:
                 #best_matches = match_finder.find_best_matches(player_profile)
-                all_matches_df = pd.DataFrame(match_finder.find_best_matches(player_profile))
+                all_matches_results  = match_finder.find_best_matches(player_profile)
+                all_matches_df = pd.DataFrame(all_matches_results)
 
                 st.markdown("---")
                 st.header(f"Top 3 Club Matches for {selected_player_name}")
@@ -146,7 +159,7 @@ if players_df is not None and crest_dict is not None:
             
                         # 3. Build the differentiator text line, if it exists
                         differentiator_html = ""
-                        if 'differentiator_text' in match:
+                        if 'differentiator_text' in match and pd.notna(match['differentiator_text']):
                             differentiator_html = f"<p style='color: #007bff; font-size: 0.9em; margin-top: 10px;'><b>⭐ Key Differentiator:</b> {match['differentiator_text']}</p>"
 
                         # 4. Build the complete HTML for the card in a single string
@@ -174,37 +187,59 @@ if players_df is not None and crest_dict is not None:
                         col1_btn, col2_btn, col3_btn = st.columns([1, 2, 1])
                         
                         with col2_btn:
-                            if st.button("View Full Club Profile", key=f"btn_{i}"):
+                            if st.button("View Full Club Profile",key=f"btn_{match['club_name']}"):
                                 st.session_state['success_message'] = f"'{match['club_name']}' selected! Navigate to 'Club Profile' from the sidebar."
                                 st.session_state['selected_club'] = match['club_name']
                                 st.rerun()
 
-                # --- NEW SECTION: FULL LEAGUE CONTEXT TABLE ---
                 st.markdown("---")
                 st.subheader("Full League Context")
-                
-                remaining_teams_df = all_matches_df.iloc[3:]
-                
-                # Prepare a clean DataFrame for display
-                display_df = remaining_teams_df[['club_name', 'match_score']].copy()
-                display_df.rename(columns={
-                     'club_name': 'Club Name',
-                     'match_score': 'Overall Score'
-                }, inplace=True)
 
-                st.dataframe(
-                    display_df,
-                    hide_index=True,
-                    use_container_width=True,
-                    column_config={
-                        "Overall Score": st.column_config.ProgressColumn(
-                            "Overall Score",
-                            format="%f",
-                            min_value=0,
-                            max_value=100,
-                        ),
-                    }
-                )
+                # Correctly slice the DataFrame to get the remaining teams
+                remaining_teams_df = all_matches_df.iloc[3:]
+
+                if not remaining_teams_df.empty:
+                    # Prepare a clean DataFrame for display
+                    
+                    display_df = remaining_teams_df[['club_name', 'match_score']].copy()
+                    
+                    display_df['match_score'] = display_df['match_score']
+                    display_df['Score'] = display_df['match_score']
+                    
+                    display_df.rename(columns={
+                        'club_name': 'Club Name',
+                        'match_score': 'Score Visual'
+                    }, inplace=True)
+
+                    # Apply custom styling to the 'Score' text column
+                    def style_score(val):
+                        if val >= 70: color = 'green'
+                        elif val >= 60: color = 'orange'
+                        else: color = 'red'
+                        return f'color: {color}; font-weight: bold; font-size: 1.5em;'
+
+                    styled_df = display_df.style.applymap(style_score, subset=['Score'])\
+                                        .format({'Score': '{:.1f}'})
+
+                    st.dataframe(
+                        styled_df,
+                        column_order=("Club Name", "Score Visual", "Score"),
+                        hide_index=True,
+                        use_container_width=True,
+                        height=400,
+                        column_config={
+                            "Score Visual": st.column_config.ProgressColumn(
+                                "Overall Score",
+                                format=" ",
+                                min_value=0,
+                                max_value=100,
+                            ),
+                            "Score": st.column_config.TextColumn(
+                                "Score",
+                                width="80"
+                            )
+                        }
+                    )
             else:
                 st.error("Could not generate a profile for the selected player.")
 else:

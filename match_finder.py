@@ -156,4 +156,4 @@ class MatchFinder:
                 else:
                     top_match['differentiator_text'] = "Slightly better overall fit."
 
-        return sorted_matches[:3]
+        return sorted_matches
