@@ -38,17 +38,45 @@ OFFICIAL_NAME_MAPPING = {
     "Metaloglobus Bucuresti": "FC Metaloglobus Bucharest"
 }
 
-def color_score(val):
+# Add this function near the top of your file
+def generate_report_html(player_name, age, pos, top_skills, match_data, crest_url):
+    """Generates a clean HTML string for the printable report."""
+    
+    skills_html = "".join([f"<li><b>{skill.replace('.', ' ').title()}:</b> Top {100-percentile:.0f}%</li>" for skill, percentile in top_skills])
+    
+    drivers_html = "".join([f"<li>✅ {driver}</li>" for driver in match_data['reason'].split(' | ')])
+
+    report = f"""
+    <html>
+        <head>
+            <style>
+                body {{ font-family: sans-serif; }}
+                .report-container {{ border: 1px solid #ddd; padding: 20px; border-radius: 10px; }}
+                .header {{ display: flex; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; }}
+                .header img {{ width: 70px; margin-right: 20px; }}
+                h1 {{ margin: 0; }}
+                h2 {{ border-bottom: 1px solid #eee; padding-bottom: 5px; }}
+            </style>
+        </head>
+        <body>
+            <div class="report-container">
+                <div class="header">
+                    <img src="{crest_url}">
+                    <div>
+                        <h1>Player-Club Fit Analysis</h1>
+                        <p><strong>Player:</strong> {player_name} | <strong>Position:</strong> {pos} | <strong>Age:</strong> {age}</p>
+                    </div>
+                </div>
+                <h2>Top Match: {match_data['club_name']} (Score: {match_data['match_score']:.1f})</h2>
+                <h3>Key Strengths</h3>
+                <ul>{skills_html}</ul>
+                <h3>Key Match Drivers</h3>
+                <ul>{drivers_html}</ul>
+            </div>
+        </body>
+    </html>
     """
-    Applies color to the score based on its value.
-    """
-    if val >= 70:
-        color = 'green'
-    elif val >= 50:
-        color = 'orange'
-    else:
-        color = 'red'
-    return f'color: {color}; font-weight: bold; font-size: 1.1em;'
+    return report
 
 # --- Main App ---
 st.title("Player Analysis & Opportunity Finder")
@@ -191,6 +219,30 @@ if players_df is not None and crest_dict is not None:
                                 st.session_state['success_message'] = f"'{match['club_name']}' selected! Navigate to 'Club Profile' from the sidebar."
                                 st.session_state['selected_club'] = match['club_name']
                                 st.rerun()
+                        # 7. Add a share button
+                        if st.button("Share Report", key=f"share_{match['club_name']}"):
+                            official_name = OFFICIAL_NAME_MAPPING.get(match['club_name'])
+                            crest = crest_dict.get(official_name, "https://i.imgur.com/8f2E3s3.png")
+            
+                            # Generate the HTML for this specific match
+                            report_html = generate_report_html(
+                                player_name=selected_player_name,
+                                age=age,
+                                pos=pos,
+                                top_skills=top_3_skills,
+                                match_data=match,
+                                crest_url=crest
+                            )
+                            # Store it in the session state to be shown in a modal
+                            st.session_state.report_to_show = report_html
+
+                    # --- NEW MODAL DISPLAY LOGIC ---
+                # Place this code immediately after the for loop block
+                if 'report_to_show' in st.session_state:
+                    st.components.v1.html(st.session_state.report_to_show, height=600, scrolling=True)
+                    if st.button("Close Report"):
+                        del st.session_state.report_to_show
+                        st.rerun()
 
                 st.markdown("---")
                 st.subheader("Full League Context")

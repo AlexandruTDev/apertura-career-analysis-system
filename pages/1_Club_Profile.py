@@ -19,6 +19,59 @@ def load_data(profiles_path, crests_path):
     except FileNotFoundError:
         return None, None
 
+def generate_club_report_html(club_data, crest_url):
+    """Generates a clean HTML string for the club profile report."""
+    
+    st.write(club_data) # This is a debug line to see the data
+    
+    # Extract the full statistical profile
+    statistical_profile = club_data.get('statistical_profile', {})
+    
+    # Find the top 5 statistical strengths based on raw totals
+    # We filter out some less meaningful stats like 'matches'
+    top_stats = sorted(
+        {k: v for k, v in statistical_profile.items() if k not in ['total.matches', 'total.matchesInStart']}.items(), 
+        key=lambda item: item[1], 
+        reverse=True
+    )[:5]
+    
+    stats_html = "".join([f"<li><b>{stat[0].replace('total.', '').replace('successful', 'Successful ').title()}:</b> {stat[1]:,.0f}</li>" for stat in top_stats])
+
+    report = f"""
+    <html>
+        <head>
+            <style>
+                body {{ font-family: sans-serif; color: #333; }}
+                .report-container {{ border: 1px solid #ddd; padding: 20px; border-radius: 10px; max-width: 800px; margin: auto; }}
+                .header {{ display: flex; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 10px; }}
+                .header img {{ width: 60px; height: 60px; margin-right: 20px; }}
+                .header h1 {{ margin: 0; font-size: 24px; }}
+                .header p {{ margin: 0; color: #666; }}
+                h2 {{ border-bottom: 1px solid #eee; padding-bottom: 5px; color: #00529B; }}
+                ul {{ list-style-type: none; padding-left: 0; }}
+                li {{ margin-bottom: 8px; font-size: 1.1em; }}
+                b {{ color: #111; }}
+            </style>
+        </head>
+        <body>
+            <div class="report-container">
+                <div class="header">
+                    <img src="{crest_url}">
+                    <div>
+                        <h1>Club Tactical Profile</h1>
+                        <p><strong>{club_data['club_name']}</strong> | Season 2024/2025</p>
+                    </div>
+                </div>
+                <h2>Tactical DNA (Top 5 Metrics)</h2>
+                <ul>{stats_html}</ul>
+                <h2>Implied Player Needs</h2>
+                <p>Based on their statistical profile, this club's system appears to favor a specific style of play, creating opportunities for players with certain key attributes.</p>
+            </div>
+        </body>
+    </html>
+    """
+    return report
+
 def create_metric_card(icon_url: str, label: str, value: str):
     """Helper function to generate the HTML for a styled metric card."""
     st.markdown(f"""
@@ -28,6 +81,55 @@ def create_metric_card(icon_url: str, label: str, value: str):
         <div style="margin-top: 5px;">{value}</div>
     </div>
     """, unsafe_allow_html=True)
+
+def generate_club_report_html(club_data, crest_url):
+    """Generates a clean HTML string for the club profile report."""
+    
+    # Extract the tactical data from the club's profile
+    tactical_data = club_data.get('poc_metrics', {}).get('tactical_analysis', {})
+    
+    # Prepare the key metrics for display in the report
+    stats_to_show = {
+        "Primary Formation": tactical_data.get('primary_formation', 'N/A'),
+        "Avg. Possession": f"{tactical_data.get('avg_possession_percentage', 0)}%",
+        "Pressing (PPDA)": f"{tactical_data.get('ppda', 0):.1f}",
+        "Avg. Pass Length": f"{tactical_data.get('avg_pass_length', 0):.1f}m"
+    }
+    
+    stats_html = "".join([f"<li><b>{stat_name}:</b> {stat_value}</li>" for stat_name, stat_value in stats_to_show.items()])
+
+    report = f"""
+    <html>
+        <head>
+            <style>
+                body {{ font-family: sans-serif; color: #333; }}
+                .report-container {{ border: 1px solid #ddd; padding: 20px; border-radius: 10px; max-width: 800px; margin: auto; }}
+                .header {{ display: flex; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 10px; }}
+                .header img {{ width: 60px; height: 60px; margin-right: 20px; }}
+                .header h1 {{ margin: 0; font-size: 24px; }}
+                .header p {{ margin: 0; color: #666; }}
+                h2 {{ border-bottom: 1px solid #eee; padding-bottom: 5px; color: #00529B; }}
+                ul {{ list-style-type: none; padding-left: 0; }}
+                li {{ margin-bottom: 8px; font-size: 1.1em; }}
+                b {{ color: #111; }}
+            </style>
+        </head>
+        <body>
+            <div class="report-container">
+                <div class="header">
+                    <img src="{crest_url}">
+                    <div>
+                        <h1>Club Tactical Profile</h1>
+                        <p><strong>{club_data['club_name']}</strong> | Season 2024-2025</p>
+                    </div>
+                </div>
+                <h2>Key Tactical Metrics</h2>
+                <ul>{stats_html}</ul>
+            </div>
+        </body>
+    </html>
+    """
+    return report
 
 # This mapping connects our clean system names to the names scraped from the official site.
 OFFICIAL_NAME_MAPPING = {
@@ -104,3 +206,21 @@ else:
         
         with st.expander("Show Raw JSON Data"):
             st.json(selected_club_data)
+
+        # --- NEW REPORTING SECTION ---
+        st.markdown("---")
+        if st.button("Share Club Profile", use_container_width=True, type="primary"):
+            crest_url = crest_dict.get(official_name, "https://i.imgur.com/8f2E3s3.png")
+            
+            # Generate the report for the selected club
+            report_html = generate_club_report_html(selected_club_data, crest_url)
+            st.session_state.club_report_to_show = report_html
+            st.rerun()
+            
+if 'club_report_to_show' in st.session_state:
+    st.header("Club Profile Report")
+    st.components.v1.html(st.session_state.club_report_to_show, height=400, scrolling=True)
+    if st.button("Close Report"):
+        del st.session_state.club_report_to_show
+        st.rerun()
+        
