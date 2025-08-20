@@ -63,9 +63,12 @@ The application is powered by a robust data pipeline that transforms raw data in
 
 **1. Raw Data Ingestion:**<br />
 * The system starts with raw CSV files for player stats, team stats, and physical metrics.<br />
+:bangbang: *Due to the sensitive and proprietary nature of most raw data used in the project the* `data` *folder is not available in the repo* <br />
+:bangbang: *Contact owner for details*
+
 
 **2. Data Processing & Enrichment:**<br />
 * A series of scripts in the `scrapers/` directory are run to clean the data, add team names, and integrate newly promoted clubs.<br />
 
 **3. Profile Generation:**<br />
-* The processed data is aggregated to create the `club_profiles_final.json`, which serves as the "single source of truth" for the main application.
+* The processed data is aggregated to create the `club_profiles_final.json`, which serves as the "single source of truth" for the main application.<br />
