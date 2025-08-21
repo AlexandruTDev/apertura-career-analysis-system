@@ -73,16 +73,24 @@ class PlayerAnalyzer:
             
             stats_df['normalized_name'] = stats_df['shortName'].apply(normalize_text)
             physical_df['normalized_name'] = physical_df['player_name'].apply(normalize_text)
-
             physical_agg_df = physical_df.groupby('normalized_name').mean(numeric_only=True).reset_index()
             
-            self.players_df = pd.merge(stats_df, physical_agg_df, on='normalized_name', how='left')
+            # 1. Merge the data first
+            merged_df = pd.merge(stats_df, physical_agg_df, on='normalized_name', how='left')
             
-            # Create the 'full_name' and 'position_group' columns
-            self.players_df['full_name'] = self.players_df['firstName'] + ' ' + self.players_df['lastName']
+            # 2. Create the 'full_name' column.
+            merged_df['full_name'] = merged_df['firstName'] + ' ' + merged_df['lastName']
+
+            # 3. Sort by minutes played to prioritize a player's main position
+            merged_df.sort_values(by='total.minutesOnField', ascending=False, inplace=True)
+            
+            # 3. Drop duplicates, keeping only the first (most played) entry for each player
+            self.players_df = merged_df.drop_duplicates(subset='full_name', keep='first').copy()
+            
+            # 4. Now create the final columns on the de-duplicated dataframe
             self.players_df['position_group'] = self.players_df['positions.position.name'].apply(get_position_group)
 
-            print("✅ Player stats and physical data loaded, normalized, and merged successfully.")
+            print("✅ Player stats and physical data loaded, de-duplicated, and merged successfully.")
             
         except FileNotFoundError as e:
             raise FileNotFoundError(f"ERROR: A data file was not found. Details: {e}")

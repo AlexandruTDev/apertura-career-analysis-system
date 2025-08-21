@@ -10,6 +10,7 @@ from weasyprint import HTML
 # --- Helper Functions ---
 @st.cache_data
 def load_all_data(stats_path, crests_path):
+    """Loads player stats and club crests data."""
     try:
         players_df = pd.read_csv(stats_path, na_values=[''])
         players_df['full_name'] = players_df['firstName'] + ' ' + players_df['lastName']
@@ -20,12 +21,22 @@ def load_all_data(stats_path, crests_path):
         return None, None
 
 @st.cache_resource
-def get_player_analyzer():
-    return PlayerAnalyzer(stats_path=PLAYERS_STATS_FILE, physical_path=PLAYERS_PHYSICAL_FILE)
+def get_services():
+    """Initializes and returns both the PlayerAnalyzer and MatchFinder."""
+    analyzer = PlayerAnalyzer(stats_path=PLAYERS_STATS_FILE, physical_path=PLAYERS_PHYSICAL_FILE)
+    finder = MatchFinder(
+        club_profiles_path='./data/processed/club_profiles_final.json',
+        player_analyzer=analyzer
+    )
+    return analyzer, finder
 
-@st.cache_resource
-def get_match_finder():
-    return MatchFinder(club_profiles_path='./data/processed/club_profiles_final.json')
+#@st.cache_resource
+#def get_player_analyzer():
+#    return PlayerAnalyzer(stats_path=PLAYERS_STATS_FILE, physical_path=PLAYERS_PHYSICAL_FILE)
+
+#@st.cache_resource
+#def get_match_finder():
+#    return MatchFinder(club_profiles_path='./data/processed/club_profiles_final.json')
 
 # This mapping connects our clean system names to the names scraped from the official site.
 OFFICIAL_NAME_MAPPING = {
@@ -159,8 +170,10 @@ players_df, crest_dict = load_all_data(
     stats_path='./data/processed/players_manually_enriched.csv',
     crests_path='./data/processed/club_crests.csv'
 )
-analyzer = get_player_analyzer()
-match_finder = get_match_finder()
+#analyzer = get_player_analyzer()
+#match_finder = get_match_finder()
+
+analyzer, match_finder = get_services()
 
 if players_df is not None and crest_dict is not None:
     st.header("1. Select Player to Analyze")

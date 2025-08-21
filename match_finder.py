@@ -182,33 +182,56 @@ class MatchFinder:
 
     def find_best_players_for_club(self, target_club_name: str, target_position_group: str) -> list:
         """
-        Finds the best-fitting players for a specific club and position.
+        Finds the best-fitting players for a specific club and position, ensuring each player is analyzed only once.
         """
         print(f"\n--- [Club Needs LOG] Starting new search for a '{target_position_group}' for '{target_club_name}' ---")
+        
         target_club_profile = self.club_profiles.get(target_club_name)
         if not target_club_profile:
+            print(f"  [ERROR] Could not find profile for club: {target_club_name}")
             return []
 
         all_players = self.player_analyzer.players_df
-        relevant_players = all_players[all_players['position_group'] == target_position_group]
-        print(f"  [LOG] Found {len(relevant_players)} players in the '{target_position_group}' position group.")
+
+        # --- De-duplicate the player list ---
+        # 1. Sort players by minutes played to ensure their primary position/entry is first.
+        sorted_players_by_minutes = all_players.sort_values(by='total.minutesOnField', ascending=False)
+        
+        # 2. Drop duplicates based on the player's full name, keeping only their most-played role.
+        unique_players_df = sorted_players_by_minutes.drop_duplicates(subset='full_name', keep='first')
+        
+        # 3. Now, filter these unique players by the desired position group.
+        relevant_players = unique_players_df[unique_players_df['position_group'] == target_position_group]
+        print(f"  [LOG] Found {len(relevant_players)} unique players in the '{target_position_group}' position group.")
 
         all_player_matches = []
         for _, player_row in relevant_players.iterrows():
             player_profile = self.player_analyzer.get_player_analysis(player_row['firstName'], player_row['lastName'])
+            
             if player_profile:
+                # This print statement will now only appear once per unique player
                 print(f"    -> Analyzing match for player: {player_row['full_name']}")
                 match_scores = self._calculate_match_score(player_profile, target_club_profile)
                 
                 if match_scores:
-                    top_skills = sorted(player_profile['analysis'].items(), key=lambda item: item[1]['percentile'], reverse=True)[:3]
-                    top_skills_names = [KPI_FORMATED_NAMES.get(s[0], s[0]) for s in top_skills]
+                    # 1. Get the player's top 3 skills with their percentile data
+                    top_skills_data = sorted(player_profile['analysis'].items(), key=lambda item: item[1]['percentile'], reverse=True)[:3]
+                    
+                    # 2. Format the strengths to include the percentile, separated by a special character
+                    strengths_with_scores = []
+                    for skill, data in top_skills_data:
+                        pretty_name = KPI_FORMATED_NAMES.get(skill, skill)
+                        percentile = data['percentile']
+                        strength_str = f"{pretty_name} (Top {100-percentile:.0f}%)"
+                        strengths_with_scores.append(strength_str)
+                    
                     all_player_matches.append({
                         "Player Name": player_row['full_name'],
                         "Age": int((pd.to_datetime('today') - pd.to_datetime(player_row['birthDate'])).days / 365.25),
                         "Current Club": player_row['teams.name'],
                         "Match Score": match_scores['match_score'],
-                        "Key Strengths": ", ".join(top_skills_names)
+                        # 3. Join with a unique separator for easy splitting in the UI
+                        "Key Strengths": " | ".join(strengths_with_scores) 
                     })
 
         sorted_players = sorted(all_player_matches, key=lambda x: x['Match Score'], reverse=True)
