@@ -57,6 +57,12 @@ def get_position_group(player_position: str) -> str:
     if 'Back' in player_position or 'Defender' in player_position: return 'Defender'
     if 'Midfielder' in player_position: return 'Midfielder'
     if 'Winger' in player_position or 'Striker' in player_position or 'Forward' in player_position: return 'Forward'
+    return 'Goalkeeper' # Default to GK if none of the above match
+
+def get_position_group(player_position: str) -> str:
+    if 'Back' in player_position or 'Defender' in player_position: return 'Defender'
+    if 'Midfielder' in player_position: return 'Midfielder'
+    if 'Winger' in player_position or 'Striker' in player_position or 'Forward' in player_position: return 'Forward'
     return 'Other'
 
 class PlayerAnalyzer:
@@ -71,6 +77,11 @@ class PlayerAnalyzer:
             physical_agg_df = physical_df.groupby('normalized_name').mean(numeric_only=True).reset_index()
             
             self.players_df = pd.merge(stats_df, physical_agg_df, on='normalized_name', how='left')
+            
+            # Create the 'full_name' and 'position_group' columns
+            self.players_df['full_name'] = self.players_df['firstName'] + ' ' + self.players_df['lastName']
+            self.players_df['position_group'] = self.players_df['positions.position.name'].apply(get_position_group)
+
             print("✅ Player stats and physical data loaded, normalized, and merged successfully.")
             
         except FileNotFoundError as e:
