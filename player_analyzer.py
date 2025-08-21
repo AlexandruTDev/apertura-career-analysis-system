@@ -4,6 +4,32 @@ import pandas as pd
 import os
 import unicodedata
 
+KPI_FORMATED_NAMES = {
+    # Forward KPIs
+    'total.goals': 'Total Goals',
+    'percent.goalConversion': 'Goal Conversion %',
+    'total.xgShot': 'Expected Goals (xG)',
+    'Count Sprint': 'Total Sprints',
+    
+    # Midfielder KPIs
+    'percent.successfulPasses': 'Passing Accuracy %',
+    'total.passesToFinalThird': 'Passes to Final Third',
+    'total.duelsWon': 'Total Duels Won',
+    'Total Distance': 'Distance Covered (m)',
+    'High Intensity (HI) Distance': 'High Intensity Distance (m)',
+
+    # Defender KPIs
+    'percent.defensiveDuelsWon': 'Defensive Duels Won %',
+    'total.interceptions': 'Total Interceptions',
+    'percent.aerialDuelsWon': 'Aerial Duels Won %',
+    'Count High Acceleration': 'Total High Accelerations',
+
+    # Universal KPIs
+    'Max Speed': 'Max Speed (km/h)',
+    'total.progressivePasses': 'Progressive Passes'
+    # Add any other skills you want to rename here
+}
+
 # --- Configuration ---
 PLAYERS_STATS_FILE = './data/processed/players_manually_enriched.csv'
 PLAYERS_PHYSICAL_FILE = './data/raw/Romania_Superliga_24_25_physical_metrics.csv'
@@ -120,7 +146,9 @@ class PlayerAnalyzer:
 
         print("\n--- 🌟 Top 3 Skills (vs. Superliga Peers) ---")
         for i, (skill, percentile) in enumerate(top_3_skills):
-            print(f"{i+1}. {skill} (Top {100-percentile:.0f}%)")
+            formated_skill_name = KPI_FORMATED_NAMES.get(skill, skill.replace('.', ' ').title())
+            print(f"{i+1}. {formated_skill_name} (Top {100-percentile:.0f}%)")
+            #print(f"{i+1}. {skill} (Top {100-percentile:.0f}%)")
 
 
 # --- Main execution block ---

@@ -40,6 +40,32 @@ OFFICIAL_NAME_MAPPING = {
     "Metaloglobus Bucuresti": "FC Metaloglobus Bucharest"
 }
 
+KPI_FORMATED_NAMES = {
+    # Forward KPIs
+    'total.goals': 'Total Goals',
+    'percent.goalConversion': 'Goal Conversion %',
+    'total.xgShot': 'Expected Goals (xG)',
+    'Count Sprint': 'Total Sprints',
+    
+    # Midfielder KPIs
+    'percent.successfulPasses': 'Passing Accuracy %',
+    'total.passesToFinalThird': 'Passes to Final Third',
+    'total.duelsWon': 'Total Duels Won',
+    'Total Distance': 'Distance Covered (m)',
+    'High Intensity (HI) Distance': 'High Intensity Distance (m)',
+
+    # Defender KPIs
+    'percent.defensiveDuelsWon': 'Defensive Duels Won %',
+    'total.interceptions': 'Total Interceptions',
+    'percent.aerialDuelsWon': 'Aerial Duels Won %',
+    'Count High Acceleration': 'Total High Accelerations',
+
+    # Universal KPIs
+    'Max Speed': 'Max Speed (km/h)',
+    'total.progressivePasses': 'Progressive Passes'
+    # Add any other skills you want to rename here
+}
+
 # Add this function near the top of your file
 def generate_report_html(player_name, age, pos, top_skills, match_data, crest_url):
     """Generates a clean HTML string for the printable report."""
@@ -188,7 +214,9 @@ if players_df is not None and crest_dict is not None:
             top_3_skills = sorted(percentiles.items(), key=lambda item: item[1], reverse=True)[:3]
             skills_html = "<ul>"
             for skill, percentile in top_3_skills:
-                skills_html += f"<li><b>{skill.replace('.', ' ').title()}</b> (Top {100-percentile:.0f}%)</li>"
+                formated_skill_name_name = KPI_FORMATED_NAMES.get(skill, skill.replace('.', ' ').title())
+                skills_html += f"<li><b>{formated_skill_name_name}</b> (Top {100-percentile:.0f}%)</li>"
+                #skills_html += f"<li><b>{skill.replace('.', ' ').title()}</b> (Top {100-percentile:.0f}%)</li>"
             skills_html += "</ul>"
             st.markdown(skills_html, unsafe_allow_html=True)
         else:
@@ -202,9 +230,14 @@ if players_df is not None and crest_dict is not None:
         if st.session_state.get('show_matches_for_player') == selected_player_name:
             player_profile = analyzer.get_player_analysis(first_name, last_name)
             if player_profile:
-                #best_matches = match_finder.find_best_matches(player_profile)
                 all_matches_results  = match_finder.find_best_matches(player_profile)
                 all_matches_df = pd.DataFrame(all_matches_results)
+
+                # --- 🕵️ LOGGING STEP 1: Check the full DataFrame ---
+                print("\n--- DEBUG LOG 1: Full match results from MatchFinder ---")
+                print(f"Shape: {all_matches_df.shape}")
+                print(all_matches_df)
+                print("-----------------------------------------------------\n")
 
                 st.markdown("---")
                 st.header(f"Top 3 Club Matches for {selected_player_name}")
@@ -314,6 +347,12 @@ if players_df is not None and crest_dict is not None:
 
                 # Correctly slice the DataFrame to get the remaining teams
                 remaining_teams_df = all_matches_df.iloc[3:]
+
+                # --- 🕵️ LOGGING STEP 2: Check the DataFrame for the context table ---
+                print("\n--- DEBUG LOG 2: Data for the 'Full League Context' table ---")
+                print(f"Shape: {remaining_teams_df.shape}")
+                print(remaining_teams_df)
+                print("----------------------------------------------------------\n")
 
                 if not remaining_teams_df.empty:
                     # Prepare a clean DataFrame for display

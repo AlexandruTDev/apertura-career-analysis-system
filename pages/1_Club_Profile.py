@@ -23,8 +23,7 @@ def load_data(profiles_path, crests_path):
 
 def generate_club_report_html(club_data, crest_url):
     """Generates a clean HTML string for the club profile report."""
-    
-    st.write(club_data) # This is a debug line to see the data
+    tactical_data = club_data.get('poc_metrics', {}).get('tactical_analysis', {})
     
     # Extract the full statistical profile
     statistical_profile = club_data.get('statistical_profile', {})
@@ -198,18 +197,31 @@ if not club_profiles_dict:
 else:
     club_names = sorted(list(club_profiles_dict.keys()))
     
-    # --- Session State Logic for Navigation ---
-    default_index = 0
-    if 'selected_club' in st.session_state and st.session_state['selected_club'] in club_names:
-        default_index = club_names.index(st.session_state['selected_club'])
-        del st.session_state['selected_club']
+    # --- Session State Logic for Navigation & Persistence ---
+    # If navigating from another page, set the current club and then clear the one-time trigger
+    if 'selected_club' in st.session_state:
+        st.session_state.current_profile_club = st.session_state.selected_club
+        del st.session_state.selected_club
     
-    selected_club_name = st.selectbox("Select a Club to Analyze:", club_names, index=default_index)
+    # If no club is being viewed, default to the first one in the list
+    if 'current_profile_club' not in st.session_state:
+        st.session_state.current_profile_club = club_names[0]
+
+    # Determine the index for the selectbox based on our persistent state
+    default_index = club_names.index(st.session_state.current_profile_club)
     
+    selected_club_name = st.selectbox(
+        "Select a Club to Analyze:", 
+        club_names, 
+        index=default_index,
+        key='club_selector' # Add a key for stability
+    )
+
+    # Update the persistent state if the user manually changes the selectbox
+    st.session_state.current_profile_club = selected_club_name
+
     if selected_club_name:
         selected_club_data = club_profiles_dict[selected_club_name]
-        
-        # --- Dynamic Title with Club Crest ---
         official_name = OFFICIAL_NAME_MAPPING.get(selected_club_name)
         crest_url = crest_dict.get(official_name)
         
@@ -248,17 +260,18 @@ else:
             value = f"{tactical_data.get('avg_pass_length', 0):.1f}m"
             create_metric_card("https://cdn-icons-png.flaticon.com/512/10062/10062255.png", "Avg. Pass Length", f"<h2 style='margin: 0;'>{value}</h2>")
         
-        with st.expander("Show Raw JSON Data"):
-            st.json(selected_club_data)
+        #with st.expander("Show Raw JSON Data"):
+         #   st.json(selected_club_data)
 
         # --- REPORTING SECTION ---
         st.markdown("---")
         if st.button("Share Club Profile", use_container_width=True, type="primary"):
-            crest_url = crest_dict.get(official_name, "https://i.imgur.com/8f2E3s3.png")
+            #crest_url = crest_dict.get(official_name, "https://i.imgur.com/8f2E3s3.png")
             
             # Generate the report for the selected club
             report_html = generate_club_report_html(selected_club_data, crest_url)
             st.session_state.club_report_to_show = report_html
+            #st.session_state.report_for_club = selected_club_name
             st.rerun()
 
     else:
@@ -266,12 +279,20 @@ else:
 
 # --- MODAL DISPLAY LOGIC ---
 if 'club_report_to_show' in st.session_state:
+    # Use the persistent state variable to ensure the correct data is used
+    report_club_name = st.session_state.current_profile_club
+    report_club_data = club_profiles_dict[report_club_name]
+    report_official_name = OFFICIAL_NAME_MAPPING.get(report_club_name)
+    report_crest_url = crest_dict.get(report_official_name, "https://i.imgur.com/8f2E3s3.png")
+    
     st.header("Club Profile Report")
     st.components.v1.html(st.session_state.club_report_to_show, height=400, scrolling=True)
 
     # --- Use a single centered column for both buttons ---
     _ , col_center, _ = st.columns([1, 2, 1]) # Use columns to center the container
     with col_center:
+        # Re-generate the report with the correct data to ensure consistency
+        report_html_for_download = generate_club_report_html(report_club_data, report_crest_url)
         # Convert the HTML report to a PDF in memory
         pdf_bytes = HTML(string=st.session_state.club_report_to_show).write_pdf()
 
@@ -279,14 +300,15 @@ if 'club_report_to_show' in st.session_state:
         st.download_button(
             label="📄 Download as PDF",
             data=pdf_bytes,
-            file_name=f"club_report_{st.session_state.get('selected_club_name_report', 'club').replace(' ', '_')}.pdf",
+            file_name=f"club_report_{report_club_name.replace(' ', '_')}.pdf",
             mime="application/pdf",
             use_container_width=True
         )
 
         if st.button("Close Report", use_container_width=True, type="secondary"):
             del st.session_state.club_report_to_show
-            del st.session_state.selected_club_name_report
+            #del st.session_state.selected_club_name_report
+            #del st.session_state.report_for_club
             st.rerun()
 
 else:
