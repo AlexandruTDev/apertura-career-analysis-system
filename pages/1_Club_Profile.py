@@ -307,8 +307,6 @@ if 'club_report_to_show' in st.session_state:
 
         if st.button("Close Report", use_container_width=True, type="secondary"):
             del st.session_state.club_report_to_show
-            #del st.session_state.selected_club_name_report
-            #del st.session_state.report_for_club
             st.rerun()
 
 else:

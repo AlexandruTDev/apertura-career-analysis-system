@@ -22,7 +22,6 @@ class MatchFinder:
         """
         Initializes the MatchFinder with a path to club profiles and a PlayerAnalyzer instance.
         """
-        print("--- [MatchFinder LOG] Initializing MatchFinder... ---")
         self.player_analyzer = player_analyzer
         try:
             with open(club_profiles_path, 'r', encoding='utf-8') as f:
@@ -30,7 +29,6 @@ class MatchFinder:
                 self.club_profiles = {club['club_name']: club for club in profiles_data}
                 print(f"[INFO] Successfully loaded {len(self.club_profiles)} club profiles.")
             self._calculate_league_averages()
-            print("✅ MatchFinder initialized and league averages calculated.")
         except FileNotFoundError:
             self.club_profiles = []
             print(f"❌ ERROR: Club profiles file not found at {club_profiles_path}")
@@ -64,17 +62,6 @@ class MatchFinder:
 
         best_match_key = next((key for key in FORMATION_FIT_MATRIX if key in player_position), None)
         return FORMATION_FIT_MATRIX[best_match_key].get(club_formation, 70) if best_match_key else 70
-        # Find the best matching key from our matrix (e.g., "Right Winger" matches "Winger")
-        #best_match_key = None
-        #for key in FORMATION_FIT_MATRIX.keys():
-        #    if key in player_position:
-        #        best_match_key = key
-        #        break
-        
-        #if best_match_key:
-        #    return FORMATION_FIT_MATRIX[best_match_key].get(club_formation, 50) # Use the specific scores for that role
-
-        #return 70 # Return a default score if no specific role is found
 
     def _calculate_match_score(self, player_profile: dict, club_profile: dict) -> dict:
         """
@@ -183,9 +170,7 @@ class MatchFinder:
     def find_best_players_for_club(self, target_club_name: str, target_position_group: str) -> list:
         """
         Finds the best-fitting players for a specific club and position, ensuring each player is analyzed only once.
-        """
-        print(f"\n--- [Club Needs LOG] Starting new search for a '{target_position_group}' for '{target_club_name}' ---")
-        
+        """        
         target_club_profile = self.club_profiles.get(target_club_name)
         if not target_club_profile:
             print(f"  [ERROR] Could not find profile for club: {target_club_name}")
@@ -200,9 +185,8 @@ class MatchFinder:
         # 2. Drop duplicates based on the player's full name, keeping only their most-played role.
         unique_players_df = sorted_players_by_minutes.drop_duplicates(subset='full_name', keep='first')
         
-        # 3. Now, filter these unique players by the desired position group.
+        # 3. Filter these unique players by the desired position group.
         relevant_players = unique_players_df[unique_players_df['position_group'] == target_position_group]
-        print(f"  [LOG] Found {len(relevant_players)} unique players in the '{target_position_group}' position group.")
 
         all_player_matches = []
         for _, player_row in relevant_players.iterrows():
@@ -210,7 +194,6 @@ class MatchFinder:
             
             if player_profile:
                 # This print statement will now only appear once per unique player
-                print(f"    -> Analyzing match for player: {player_row['full_name']}")
                 match_scores = self._calculate_match_score(player_profile, target_club_profile)
                 
                 if match_scores:
@@ -235,7 +218,6 @@ class MatchFinder:
                     })
 
         sorted_players = sorted(all_player_matches, key=lambda x: x['Match Score'], reverse=True)
-        print(f"--- [Club Needs LOG] Search complete. Returning {len(sorted_players)} players. ---")
         return sorted_players
 
 # --- Main execution block for testing ---

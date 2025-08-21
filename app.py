@@ -19,4 +19,5 @@ st.markdown("""
     
     - **Club Profile:** For a deep-dive into a specific club's tactical, squad, and financial data.
     - **Player Analysis:** To find the best club matches for a specific player.
+    - **Club Needs & Talent Finder** To discover new talent. Select a club and a position of need to get a ranked list of the best-fitting players from across the league.
 """)
